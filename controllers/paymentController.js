@@ -1,138 +1,145 @@
-const Payment = require('../models/paymentModel');
-const ObjectID = require('mongoose').Types.ObjectId;
+const Payment = require("../models/paymentModel");
 
+const payCash = async (req, res) => {
+  const { entreprise, duration, paymentDate, amount } = req.body;
 
-module.exports.payCash = async (req, res) => {
-    const payment = new Payment({
-        entreprise: req.body.entreprise,
-        method: "espèce",
-        duration: req.body.duration,
-        paymentDate: req.body.paymentDate,
-        amount: req.body.amount
-    });
+  const payment = new Payment({
+    entreprise,
+    method: "cash",
+    duration,
+    paymentDate,
+    amount,
+  });
 
-    try {
-        const savedPayment = await payment.save();
-        res.send({ savedPayment });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  try {
+    const savedPayment = await payment.save();
+    res.send({ savedPayment });
+  } catch (error) {
+    return res.status(500).json({ message: error });
+  }
 };
 
+const payCheck = async (req, res) => {
+  const { entreprise, duration, amount, checkNumber, checkDate } = req.body;
 
+  const payment = new Payment({
+    entreprise,
+    method: "check",
+    duration,
+    amount,
+    checkNumber,
+    checkDate,
+  });
 
-module.exports.payCheck = async (req, res) => {
-    const payment = new Payment({
-        entreprise: req.body.entreprise,
-        method: "Chéque",
-        duration: req.body.duration,
-        amount: req.body.amount,
-        checkNumber: req.body.checkNumber,
-        checkDate: req.body.checkDate
-    });
-
-    try {
-        const savedPayment = await payment.save();
-        res.send({ savedPayment });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  try {
+    const savedPayment = await payment.save();
+    res.send({ savedPayment });
+  } catch (error) {
+    return res.status(500).json({ message: error });
+  }
 };
 
-module.exports.deletePayment = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+const deletePayment = async (req, res) => {
+  const payment = await Payment.findById(req.params.id);
 
-    try {
-        await Payment.deleteOne({ _id: req.params.id }).exec();
-        res.status(200).json({ message: "Succefully deleted" });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  if (payment) {
+    await Payment.deleteOne({ _id: payment._id });
+    res.json({ message: "Payment deleted successfully." });
+  } else {
+    res.status(404).json("Payment not found");
+  }
 };
 
-module.exports.updatePayCash = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+const updatePayCash = async (req, res) => {
+  const { entreprise, duration, paymentDate, amount } = req.body;
 
-    try {
-        await Payment.findByIdAndUpdate(
-            { _id: req.params.id }, {
-            entreprise: req.body.entreprise,
-            method: req.body.method,
-            duration: req.body.duration,
-            amount: req.body.amount,
-            paymentDate: req.body.Date
-        },
-        ).then((docs, err) => {
-            if (!err) return res.json({ message: "Succefully updated" });
+  let updatedFields = { entreprise, duration, paymentDate, amount };
 
-        });
+  try {
+    const updatedPayment = await Payment.findByIdAndUpdate(
+      req.params.id,
+      updatedFields
+    );
 
-    } catch (err) {
-        return res.status(500).json({ message: err });
+    if (updatedPayment) {
+      await res.json({
+        message: "Payment updated successfully",
+        updatedPayment,
+      });
+    } else {
+      res.status(404).json("Payment not found");
     }
+  } catch (error) {
+    res.status(500).json(error);
+  }
 };
 
-module.exports.updatePayCheck = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+const updatePayCheck = async (req, res) => {
+  const { entreprise, duration, amount, checkNumber, checkDate } = req.body;
 
-    try {
-        await Payment.findByIdAndUpdate(
-            { _id: req.params.id }, {
-            entreprise: req.body.entreprise,
-            method: req.body.method,
-            duration: req.body.duration,
-            amount: req.body.amount,
-            paymentDate: req.body.Date,
-            checkNumber: req.body.checkNumber,
-            checkDate: req.body.checkDate
-        },
-        ).then((docs, err) => {
-            if (!err) return res.json({ message: "Succefully updated" });
+  let updatedFields = { entreprise, duration, amount, checkNumber, checkDate };
 
-        })
-    } catch (err) {
-        return res.status(500).json({ message: err });
+  try {
+    const updatedPayment = await Payment.findByIdAndUpdate(
+      req.params.id,
+      updatedFields
+    );
+
+    if (updatedPayment) {
+      await res.json({
+        message: "Payment updated successfully",
+        updatedPayment,
+      });
+    } else {
+      res.status(404).json("Payment not found");
     }
+  } catch (error) {
+    res.status(500).json(error);
+  }
 };
-
-
 
 // Display functions
-
-module.exports.getAllPayments = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const payments = await Payment.find().populate("entreprise", "name").sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(payments)
+const getAllPayments = async (req, res) => {
+  const payments = await Payment.find().populate("entreprise", "name");
+  res.status(200).json(payments);
 };
 
-
-module.exports.getAllCashPayments = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const payments = await Payment.find({ method: "espèce" }).populate("entreprise", "name").sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(payments)
+const getAllCashPayments = async (req, res) => {
+  const payments = await Payment.find({ method: "cash" }).populate(
+    "entreprise",
+    "name"
+  );
+  res.status(200).json(payments);
 };
 
+const getAllCheckPayments = async (req, res) => {
+  const payments = await Payment.find({ method: "check" }).populate(
+    "entreprise",
+    "name"
+  );
 
-module.exports.getAllCheckPayments = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const payments = await Payment.find({ method: "Chéque" }).populate("entreprise", "name").sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(payments)
+  res.status(200).json(payments);
 };
 
+const paymentInfo = async (req, res) => {
+  const payment = await Payment.findById(req.params.id);
 
+  if (payment) {
+    res.json(payment);
+  } else {
+    res.status(404).json("Payment not found.");
+  }
+};
 
-module.exports.paymentInfo = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    Payment.findById(req.params.id, (err, docs) => {
-        if (!err) res.send(docs)
-        else console.log('ID unknown : ' + err)
-    }).populate("entreprise", "name");
+module.exports = {
+  payCheck,
+  payCash,
+  updatePayCheck,
+  updatePayCash,
+  deletePayment,
+  getAllCashPayments,
+  getAllPayments,
+  getAllCashPayments,
+  getAllCheckPayments,
+  paymentInfo,
 };

@@ -1,10 +1,26 @@
-const router = require('express').Router();
-const deskController = require('../controllers/deskController');
+const router = require("express").Router();
+const {
+  createDesk,
+  updateDesk,
+  deleteDesk,
+  getAllDesks,
+  deskInfo,
+  getCurrentUserDeskInfo,
+} = require("../controllers/deskController");
 
-router.post('/',deskController.createDesk);
-router.delete('/:id', deskController.deleteDesk);
-router.put('/:id', deskController.updateDesk);
-router.get('/', deskController.getAllDesks);
-router.get('/:id', deskController.deskInfo);
+const { authorizedAdmin } = require("../middlewares/authMiddleware");
 
-module.exports = router;  
+router
+  .route("/")
+  .post(authorizedAdmin, createDesk)
+  .get(authorizedAdmin, getAllDesks);
+
+router.get("/current", getCurrentUserDeskInfo);
+
+router
+  .route("/:id")
+  .delete(authorizedAdmin, deleteDesk)
+  .put(authorizedAdmin, updateDesk)
+  .get(authorizedAdmin, deskInfo);
+
+module.exports = router;

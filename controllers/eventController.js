@@ -1,82 +1,84 @@
-const Event = require('../models/eventModel');
-const ObjectID = require('mongoose').Types.ObjectId;
+const Event = require("../models/eventModel");
 
+const createEvent = async (req, res) => {
+  const { name, city, address, entrepriseId, date, description } = req.body;
 
-module.exports.createEvent = async (req, res) => {
-    const event = new Event({
-        name: req.body.name,
-        city: req.body.city,
-        address: req.body.address,
-        entrepriseId: req.body.entrepriseId,
-        date: req.body.date,
-        description: req.body.description
-    });
+  const newEvent = new Event({
+    name,
+    city,
+    address,
+    entrepriseId,
+    date,
+    description,
+  });
 
-    try {
-        const savedEvent = await event.save();
-        res.send({ savedEvent });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  try {
+    await newEvent.save();
+    res.status(201).json({ message: "Event created successfully", newEvent });
+  } catch (error) {
+    res.status(400).json(error);
+  }
 };
 
+const updateEvent = async (req, res) => {
+  const { name, city, address, entrepriseId, date, description } = req.body;
 
+  let updatedFields = {
+    name,
+    city,
+    address,
+    entrepriseId,
+    date,
+    description,
+  };
 
-module.exports.updateEvent = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  try {
+    const updatedEvent = await Event.findByIdAndUpdate(
+      req.params.id,
+      updatedFields
+    );
 
-    try {
-        await Event.findByIdAndUpdate(
-            { _id: req.params.id }, {
-            name: req.body.name,
-            city: req.body.city,
-            address: req.body.address,
-            entrepriseId: req.body.entrepriseId,
-            date: req.body.date,
-            description: req.body.description
-        }
-        ).then((docs, err) => {
-            if (!err) return res.json({ message: "Succefully updated" });
-        });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
+    if (updatedEvent) {
+      await res.json({ message: "Event updated successfully", updatedEvent });
+    } else {
+      res.status(404).json("Event not found");
     }
+  } catch (error) {
+    res.status(500).json(error);
+  }
 };
 
+const deleteEvent = async (req, res) => {
+  const event = await Event.findById(req.params.id);
 
-
-module.exports.deleteEvent = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        await Event.deleteOne({ _id: req.params.id }).exec();
-        res.status(200).json({ message: "Succefully deleted" });
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  if (event) {
+    await Event.deleteOne({ _id: event._id });
+    res.json({ message: "Event deleted successfully." });
+  } else {
+    res.status(404).json("Event not found");
+  }
 };
-
-
 
 // Display functions
-
-module.exports.getAllEvents = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const events = await Event.find().populate("entrepriseId", "name").sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(events);
+const getAllEvents = async (req, res) => {
+  const events = await Event.find({});
+  res.status(200).json(events);
 };
 
+const eventInfo = async (req, res) => {
+  const event = await Event.findById(req.params.id);
 
-module.exports.eventInfo = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  if (event) {
+    res.json(event);
+  } else {
+    res.status(404).json("Event not found.");
+  }
+};
 
-    Event.findById(req.params.id, (err, docs) => {
-        if (!err) res.send(docs)
-        else console.log('ID unknown : ' + err);
-    }).populate("entrepriseId", "name");
+module.exports = {
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  getAllEvents,
+  eventInfo,
 };

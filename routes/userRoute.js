@@ -1,13 +1,38 @@
-const router = require('express').Router();
-const userController = require('../controllers/userController');
+const router = require("express").Router();
+const {
+  createUser,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  userInfo,
+  loginUser,
+  logoutUser,
+  getCurrentUserProfile,
+  updateCurrentUserProfile,
+} = require("../controllers/userController");
 
-router.post('/adherent' ,userController.createUserAdherant);
-router.post('/admin' ,userController.createUserAdmin);
-router.put('/:id', userController.updateUser);
-router.delete('/:id',userController.deleteUser);
-router.get('/adherents', userController.getAdherent);
-router.get('/admins', userController.getAdmin);
-router.get('/:id', userController.userInfo);
-router.get('/' ,userController.getAllUsers);
+const {
+  authenticate,
+  authorizedAdmin,
+} = require("../middlewares/authMiddleware.js");
+
+router
+  .route("/")
+  .post(createUser)
+  .get(authenticate, authorizedAdmin, getAllUsers);
+
+router.post("/auth", loginUser);
+router.post("/logout", logoutUser);
+
+router
+  .route("/profile")
+  .get(authenticate, getCurrentUserProfile)
+  .put(authenticate, updateCurrentUserProfile);
+
+router
+  .route("/:id")
+  .delete(authenticate, authorizedAdmin, deleteUser)
+  .get(authenticate, authorizedAdmin, userInfo)
+  .put(authenticate, authorizedAdmin, updateUser);
 
 module.exports = router;

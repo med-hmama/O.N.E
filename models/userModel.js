@@ -1,78 +1,74 @@
-const mongoose = require('mongoose');
-const { isEmail } = require('validator');
+const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-    pseudo: {
-        type: String,
-        required: true,
-        min: 3,
-        max: 255,
-        unique: true,
-        trim: true
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      min: 3,
+      max: 255,
+      unique: true,
+      trim: true,
     },
 
     password: {
-        type: String,
-        required: true,
-        min: 6,
-        max: 1024
+      type: String,
+      required: true,
+      min: 6,
+      max: 1024,
     },
 
     email: {
-        type: String,
-        required: true,
-        min: 6,
-        max: 255,
-        validate: [isEmail],
-        unique: true
+      type: String,
+      required: true,
+      min: 6,
+      max: 255,
+      unique: true,
     },
 
     firstName: {
-        type: String,
-        required: true,
-        min: 3,
-        max: 255
+      type: String,
+      required: true,
+      min: 3,
+      max: 255,
     },
 
-    name: {
-        type: String,
-        required: true,
-        min: 3,
-        max: 255
+    lastName: {
+      type: String,
+      required: true,
+      min: 3,
+      max: 255,
     },
 
-    role: {
-        type: String,
+    isAdmin: {
+      type: Boolean,
+      required: true,
+      default: false,
     },
 
-    telephone: {
-        type: Number,
-        required: true,
-        min: 10000000,
-        max: 99999999
+    phoneNumber: {
+      type: Number,
+      required: true,
+      min: 10000000,
+      max: 99999999,
     },
 
     entrepriseId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Entreprise",
-        required: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Entreprise",
+      // required: true,
     },
 
     deskId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Desk",
-        required: true
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Desk",
+      // required: true,
     },
+  },
 
-    activation: {
-        type: Boolean,
-        default: true
-
-    },
-},
-
-    {
-        timestamps: true,
-    });
+  {
+    timestamps: true,
+  }
+);
 
 module.exports = mongoose.model("User", userSchema);

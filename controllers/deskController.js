@@ -1,80 +1,105 @@
-const Desk = require('../models/deskModel');
-const ObjectID = require('mongoose').Types.ObjectId;
+const Desk = require("../models/deskModel");
+const User = require("../models/userModel");
 
+const createDesk = async (req, res) => {
+  const { deskNumber, phoneNumber, city, address, postalCode } = req.body;
 
-module.exports.createDesk = async (req, res) => {
-    const desk = new Desk({
-        deskNumber: req.body.deskNumber,
-        telephone: req.body.telephone,
-        city: req.body.city,
-        address: req.body.address,
-        postalCode: req.body.postalCode
-    });
+  const deskNumberExists = await Desk.findOne({ deskNumber });
 
-    try {
-        const savedDesk = await desk.save();
-        res.send({ savedDesk });
+  if (deskNumberExists)
+    return res.status(400).json({ message: "Desk number already exists." });
 
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  const phoneNumberExists = await Desk.findOne({ phoneNumber });
+
+  if (phoneNumberExists)
+    return res.status(400).json({ message: "Phone number already exists." });
+
+  const newDesk = new Desk({
+    deskNumber,
+    phoneNumber,
+    city,
+    address,
+    postalCode,
+  });
+
+  try {
+    await newDesk.save();
+    res.status(201).json({ message: "Desk created successfully", newDesk });
+  } catch (error) {
+    res.status(400).json(error);
+  }
 };
 
+const updateDesk = async (req, res) => {
+  const { deskNumber, phoneNumber, city, address, postalCode } = req.body;
 
+  let updatedFields = {
+    deskNumber,
+    phoneNumber,
+    city,
+    address,
+    postalCode,
+  };
 
-module.exports.updateDesk = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  try {
+    const updatedDesk = await Desk.findByIdAndUpdate(
+      req.params.id,
+      updatedFields
+    );
 
-    try {
-        await Desk.findByIdAndUpdate(
-            { _id: req.params.id }, {
-            deskNumber: req.body.deskNumber,
-            telephone: req.body.telephone,
-            city: req.body.city,
-            address: req.body.address,
-            postalCode: req.body.postalCode
-        }
-        ).then((docs, err) => {
-            if (!err) return res.json({ message: "Succefully updated" });
-        });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
+    if (updatedDesk) {
+      await res.json({ message: "Desk updated successfully", updatedDesk });
+    } else {
+      res.status(404).json("Desk not found");
     }
+  } catch (error) {
+    res.status(500).json(error);
+  }
 };
 
+const deleteDesk = async (req, res) => {
+  const desk = await Desk.findById(req.params.id);
 
-
-module.exports.deleteDesk = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        await Desk.deleteOne({ _id: req.params.id }).exec();
-        res.status(200).json({ message: "Succefully deleted" });
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  if (desk) {
+    await Desk.deleteOne({ _id: desk._id });
+    res.json({ message: "Desk deleted successfully." });
+  } else {
+    res.status(404).json("Desk not found");
+  }
 };
-
-
 
 // Display functions
-
-module.exports.getAllDesks = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const desks = await Desk.find().limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(desks);
+const getAllDesks = async (req, res) => {
+  const desks = await Desk.find({});
+  res.status(200).json(desks);
 };
 
+const deskInfo = async (req, res) => {
+  const desk = await Desk.findById(req.params.id);
 
-module.exports.deskInfo = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  if (desk) {
+    res.json(desk);
+  } else {
+    res.status(404).json("Desk not found.");
+  }
+};
 
-    Desk.findById(req.params.id, (err, docs) => {
-        if (!err) res.send(docs)
-        else console.log('ID unknown : ' + err);
-    });
+const getCurrentUserDeskInfo = async (req, res) => {
+  const currentUser = await User.findById(req.user._id);
+  const desk = await Desk.findById(currentUser.deskId);
+
+  if (desk) {
+    res.json(desk);
+  } else {
+    res.status(404).json("Desk not found.");
+  }
+};
+
+module.exports = {
+  createDesk,
+  updateDesk,
+  deleteDesk,
+  getAllDesks,
+  deskInfo,
+  getCurrentUserDeskInfo,
 };

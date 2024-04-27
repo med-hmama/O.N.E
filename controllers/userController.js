@@ -1,135 +1,224 @@
-const User = require('../models/userModel');
-const ObjectID = require('mongoose').Types.ObjectId;
+const User = require("../models/userModel");
 const bcrypt = require("bcryptjs");
+const { generateToken } = require("../utils/createToken");
 
+const createUser = async (req, res) => {
+  const {
+    username,
+    password,
+    email,
+    firstName,
+    lastName,
+    phoneNumber,
+    isAdmin,
+    entrepriseId,
+    deskId,
+  } = req.body;
 
-module.exports.createUserAdherant = async (req, res) => {
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(req.body.password, salt)
+  const usernameExists = await User.findOne({ username });
+  if (usernameExists)
+    return res.status(400).json({ message: "This username  already exists." });
 
-    const adherent = new User({
-        pseudo: req.body.pseudo,
-        password: hashedPassword,
-        email: req.body.email,
-        firstName: req.body.firstName,
-        name: req.body.name,
-        role: "adherent",
-        telephone: req.body.telephone,
-        entrepriseId: req.body.entrepriseId,
-        deskId: req.body.deskId,
-        activation: req.body.activation
-    });
+  const emailExists = await User.findOne({ email });
+  if (emailExists)
+    return res.status(400).json({ message: "This email already exists." });
+
+  const phoneNumberExists = await User.findOne({ phoneNumber });
+  if (phoneNumberExists)
+    return res
+      .status(400)
+      .json({ message: "This phone number already exists." });
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(req.body.password, salt);
+
+  const newUser = new User({
+    username,
+    password: hashedPassword,
+    email,
+    firstName,
+    lastName,
+    phoneNumber,
+    isAdmin,
+    entrepriseId,
+    deskId,
+  });
+
+  try {
+    await newUser.save();
+    res.send({ newUser });
+    generateToken(res, newUser._id);
+  } catch (error) {
+    return res.status(500).json({ message: error });
+  }
+};
+
+const updateUser = async (req, res) => {
+  const user = await User.findById(req.params.id);
+
+  if (user.isAdmin) {
+    res.status(400).json("Cannot update admin user.");
+  } else {
+    const {
+      username,
+      password,
+      email,
+      firstName,
+      lastName,
+      phoneNumber,
+      entrepriseId,
+      deskId,
+    } = req.body;
+
+    let updatedFields = {
+      username,
+      email,
+      firstName,
+      lastName,
+      phoneNumber,
+      entrepriseId,
+      deskId,
+    };
+
+    if (password) {
+      const saltRounds = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      updatedFields.password = hashedPassword;
+    }
 
     try {
-        const savedAdherent = await adherent.save();
-        res.send({ savedAdherent });
+      const updatedUser = await User.findByIdAndUpdate(
+        req.params.id,
+        updatedFields
+      );
 
-    } catch (err) {
-        return res.status(500).json({ message: err });
+      if (updatedUser) {
+        await res.json({
+          message: "User updated succsessfully",
+          updateUser,
+        });
+      } else {
+        res.status(404).json("User not found");
+      }
+    } catch (error) {
+      res.status(500).json({ message: error });
     }
+  }
 };
 
-module.exports.createUserAdmin = async (req, res) => {
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(req.body.password, salt)
+const deleteUser = async (req, res) => {
+  const user = await User.findById(req.params.id);
 
-    const admin = new User({
-        pseudo: req.body.pseudo,
-        password: hashedPassword,
-        email: req.body.email,
-        firstName: req.body.firstName,
-        name: req.body.name,
-        role: "admin",
-        telephone: req.body.telephone,
-        entrepriseId: req.body.entrepriseId,
-        deskId: req.body.deskId,
-        activation: req.body.activation
-    });
-
-    try {
-        const savedAdmin = await admin.save();
-        res.send({ savedAdmin });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
+  if (user) {
+    if (user.isAdmin) {
+      res.status(400).json("Cannot delete an admin user.");
     }
+    await User.deleteOne({ _id: user._id });
+    res.json({ message: "User deleted successfully." });
+  } else {
+    res.status(404).json("User not found");
+  }
 };
 
+const getCurrentUserProfile = async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (user) {
+    res.json({ user });
+  } else {
+    res.status(404).json("User not found.");
+  }
+};
 
+const updateCurrentUserProfile = async (req, res) => {
+  const { password, firstName, lastName, address } = req.body;
 
-module.exports.updateUser = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  let updatedFields = {
+    firstName,
+    lastName,
+    address,
+  };
 
-    const salt = await bcrypt.genSalt(10)
-    const hashedPassword = await bcrypt.hash(req.body.password, salt)
+  if (password) {
+    const saltRounds = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    updatedFields.password = hashedPassword;
+  }
 
-    try {
-        await User.findByIdAndUpdate(
-            { _id: req.params.id }, {
-            pseudo: req.body.pseudo,
-            password: hashedPassword,
-            email: req.body.email,
-            firstName: req.body.firstName,
-            name: req.body.name,
-            role: req.body.role,
-            telephone: req.body.telephone,
-            entrepriseId: req.body.entrepriseId,
-            deskId: req.body.deskId,
-            activation: req.body.activation
-        }
-        ).then((docs, err) => {
-            if (!err) return res.json({ message: "Succefully updated" });
-        })
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      updatedFields
+    );
 
-    } catch (err) {
-        return res.status(500).json({ message: err });
+    if (updatedUser) {
+      await res.json({
+        updatedUser,
+      });
+    } else {
+      res.status(404).json("User not found");
     }
+  } catch (error) {
+    res.status(500).json({ message: error });
+  }
 };
 
-
-module.exports.deleteUser = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        await User.deleteOne({ _id: req.params.id }).exec();
-        res.status(200).json({ message: "Succefully deleted" });
-    } catch (err) {
-        return res.status(500).json({ message: err })
-    }
+// DISPLAY FUNCTIONS
+const getAllUsers = async (req, res) => {
+  const users = await User.find()
+    .populate({ path: "entrepriseId", select: ["name", "image"] })
+    .populate("deskId", "deskNumber");
+  res.status(200).json(users);
 };
 
+const userInfo = async (req, res) => {
+  const user = await User.findById(req.params.id)
+    .populate("entrepriseId", "name")
+    .populate("deskId", "deskNumber");
 
-
-// Display functions
-
-module.exports.getAllUsers = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const users = await User.find().populate({ path: 'entrepriseId', select: ['name', 'image'] }).populate("deskId", "deskNumber").limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(users);
+  if (user) {
+    res.json({ user });
+  } else {
+    res.status(404).json("User not found.");
+  }
 };
 
+//AUTH FUNCTIONS
+const loginUser = async (req, res) => {
+  const { username, password } = req.body;
 
-module.exports.getAdherent = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const adherents = await User.find({ role: "adherent" }).populate("entrepriseId", "name").populate("deskId", "deskNumber").limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(adherents);
+  const existingUser = await User.findOne({ username });
+  if (!existingUser)
+    return res.status(400).json({ message: "Invalid credentials" });
+
+  const isPasswordValid = await bcrypt.compare(password, existingUser.password);
+
+  if (!isPasswordValid)
+    return res.status(400).json({ message: "Invalid credentials" });
+
+  generateToken(res, existingUser._id);
+
+  return res.status(201).json({
+    message: "Logged in successfully.",
+    existingUser,
+  });
 };
 
-module.exports.getAdmin = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const admins = await User.find({ role: { $regex: 'ADM' } }).populate("entrepriseId", "name").populate("deskId", "deskNumber").limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(admins);
+const logoutUser = async (req, res) => {
+  res.cookie("jwt", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
+  res.status(200).json({ message: "Logged out successfully" });
 };
 
-
-module.exports.userInfo = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    User.findById(req.params.id, (err, docs) => {
-        if (!err) res.send(docs)
-        else console.log('ID unknown : ' + err)
-    }).populate("entrepriseId", "name").populate("deskId", "deskNumber");
+module.exports = {
+  createUser,
+  updateUser,
+  deleteUser,
+  getAllUsers,
+  userInfo,
+  loginUser,
+  logoutUser,
+  getCurrentUserProfile,
+  updateCurrentUserProfile,
 };

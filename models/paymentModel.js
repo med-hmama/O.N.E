@@ -1,46 +1,47 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const paymentSchema = new mongoose.Schema({
+const paymentSchema = new mongoose.Schema(
+  {
     entreprise: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Entreprise",
-        required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Entreprise",
+      required: true,
     },
 
     method: {
-        type: String,
-        required: true,
-        min: 2,
-        max: 20
+      type: String,
+      required: true,
+      min: 2,
+      max: 20,
     },
 
     duration: {
-        type: String,
-        required: true,
-
+      type: String,
+      required: true,
     },
 
     amount: {
-        type: Number,
-        required: true,
+      type: Number,
+      required: true,
     },
 
     paymentDate: {
-        type: Date,
-        default: Date.now,
+      type: Date,
+      default: Date.now,
     },
 
     checkNumber: {
-        type: Number
+      type: Number,
     },
 
     checkDate: {
-        type: Date
+      type: Date,
     },
-},
+  },
 
-    {
-        timestamps: true,
-    });
+  {
+    timestamps: true,
+  }
+);
 
 module.exports = mongoose.model("Payment", paymentSchema);

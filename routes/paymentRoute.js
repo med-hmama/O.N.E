@@ -1,14 +1,24 @@
-const router = require('express').Router();
-const paymentController = require('../controllers/paymentController');
+const router = require("express").Router();
+const {
+  payCheck,
+  payCash,
+  updatePayCheck,
+  updatePayCash,
+  deletePayment,
+  getAllPayments,
+  getAllCashPayments,
+  getAllCheckPayments,
+  paymentInfo,
+} = require("../controllers/paymentController");
 
-router.post('/cash',paymentController.payCash);
-router.post('/check',paymentController.payCheck);
-router.delete('/:id',paymentController.deletePayment);
-router.put('/cash/:id',paymentController.updatePayCash);
-router.put('/check/:id',paymentController.updatePayCheck);
-router.get('/' ,paymentController.getAllPayments);
-router.get('/cash' ,paymentController.getAllCashPayments);
-router.get('/check' ,paymentController.getAllCheckPayments);
-router.get('/:id', paymentController.paymentInfo);
+router.get("/", getAllPayments);
+
+router.route("/cash").post(payCash).get(getAllCashPayments);
+router.put("/cash/:id", updatePayCash);
+
+router.route("/check").post(payCheck).get(getAllCheckPayments);
+router.put("/check/:id", updatePayCheck);
+
+router.route("/:id").delete(deletePayment).get(paymentInfo);
 
 module.exports = router;

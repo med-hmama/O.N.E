@@ -1,10 +1,26 @@
-const router = require('express').Router();
-const entrepriseController = require('../controllers/entrepriseController');
+const router = require("express").Router();
+const {
+  createEntreprise,
+  updateEntreprise,
+  deleteEntreprise,
+  entrepriseInfo,
+  getAllEntreprises,
+  getCurrentUserEntrepriseInfo,
+} = require("../controllers/entrepriseController");
 
-router.get('/', entrepriseController.getAllEntreprises);
-router.post('/', entrepriseController.createEntreprise)
-router.put('/:id', entrepriseController.updateEntreprise);
-router.delete('/:id', entrepriseController.deleteEntreprise);
-router.get('/:id', entrepriseController.entrepriseInfo);
+const { authorizedAdmin } = require("../middlewares//authMiddleware");
+
+router
+  .route("/")
+  .post(authorizedAdmin, createEntreprise)
+  .get(authorizedAdmin, getAllEntreprises);
+
+router.get("/current", getCurrentUserEntrepriseInfo);
+
+router
+  .route("/:id")
+  .put(authorizedAdmin, updateEntreprise)
+  .delete(authorizedAdmin, deleteEntreprise)
+  .get(authorizedAdmin, entrepriseInfo);
 
 module.exports = router;

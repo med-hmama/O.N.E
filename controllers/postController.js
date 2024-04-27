@@ -1,180 +1,204 @@
-const Post = require('../models/postModel');
-const ObjectID = require('mongoose').Types.ObjectId;
+const Post = require("../models/postModel");
 
+const createPost = async (req, res) => {
+  const { title, message, type, image, video } = req.body;
 
-module.exports.createPost = async (req, res) => {
-    const post = new Post({
-        posterId: req.body.posterId,
-        title: req.body.title,
-        message: req.body.message,
-        image: req.body.image,
-        video: req.body.video,
-        type: req.body.type
-    });
+  const newPost = new Post({
+    posterId: req.user._id,
+    title,
+    message,
+    type,
+    image,
+    video,
+    comments: [],
+  });
 
-    try {
-        const savedPost = await post.save();
-        return res.status(201).json({ savedPost });
-    } catch (err) {
-        return res.status(400).send(err);
-    }
+  try {
+    await newPost.save();
+    res.status(201).json({ message: "Post created successfully", newPost });
+  } catch (error) {
+    res.status(400).json(error);
+  }
 };
 
+const updatePost = async (req, res) => {
+  const post = await Post.findById(req.params.id);
 
+  const posterId = post.posterId.toString();
+  const userId = req.user._id.toString();
 
-module.exports.updatePost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  if (posterId == userId) {
+    const { title, message, type, image, video } = req.body;
 
-    const updatedRecord = {
-        title: req.body.title,
-        message: req.body.message,
-        type: req.body.type,
-        image: req.body.image,
-        video: req.body.video
+    let updatedFields = {
+      title,
+      message,
+      type,
+      image,
+      video,
     };
 
-    Post.findByIdAndUpdate(
+    try {
+      const updatedPost = await Post.findByIdAndUpdate(
         req.params.id,
-        { $set: updatedRecord },
-        { new: true },
-        (err, docs) => {
-            if (!err) res.send(docs);
-            else console.log(err);
+        updatedFields
+      );
+
+      if (updatedPost) {
+        await res.json({
+          message: "Post updated successfully",
+          updatedPost,
         });
-};
-
-
-
-module.exports.deletePost = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        await Post.deleteOne({ _id: req.params.id }).exec();
-        res.status(200).json({ message: "Succefully deleted" });
-    } catch (err) {
-        return res.status(500).json({ message: err })
+      } else {
+        res.status(404).json("Post not found");
+      }
+    } catch (error) {
+      res.status(500).json(error);
     }
+  } else {
+    res.status(500).json("Only the post owner can update it.");
+  }
 };
 
+const deletePost = async (req, res) => {
+  const post = await Post.findById(req.params.id);
 
-
-// Comments functions
-
-module.exports.commentPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        return Post.findByIdAndUpdate(
-            req.params.id,
-            {
-                $push: {
-                    comments: {
-                        commenterId: req.body.commenterId,
-                        text: req.body.text,
-                        timestamp: new Date().getTime()
-                    }
-                }
-            },
-            { new: true },
-            (err, docs) => {
-                if (!err) return res.send(docs);
-                else return res.status(400).send(err);
-            }
-        ).populate({ path: 'posterId', select: ['name', 'firstName'] }).populate({ path: 'comments.commenterId', select: ['name', 'firstName'] });
-    } catch (err) {
-        return res.status(400).send(err);
-    }
+  if (post) {
+    await post.deleteOne({ _id: post._id });
+    res.json({ message: "Post deleted successfully." });
+  } else {
+    res.status(404).json("Post not found");
+  }
 };
-
-
-
-module.exports.editCommentPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        return Post.findById(req.params.id, (err, docs) => {
-            const theComment = docs.comments.find((comment) =>
-                comment._id.equals(req.body.commentId)
-            );
-
-            if (!theComment) return res.status(404).send("Comment not found");
-            theComment.text = req.body.text;
-
-            return docs.save((err) => {
-                if (!err) return res.status(200).send(docs);
-                return res.status(500).send(err);
-            });
-        }).populate({ path: 'posterId', select: ['name', 'firstName'] }).populate({ path: 'comments.commenterId', select: ['name', 'firstName'] });
-    } catch (err) {
-        return res.status(400).send(err);
-    }
-};
-
-
-
-module.exports.deleteCommentPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        return Post.findByIdAndUpdate(
-            req.params.id,
-            {
-                $pull: {
-                    comments: {
-                        _id: req.body.commentId
-                    },
-                },
-            },
-            { new: true },
-            (err, docs) => {
-                if (!err) res.status(200).json({ message: "Succefully deleted" });
-                else return res.status(400).send(err);
-            }
-        );
-    } catch (err) {
-        return res.status(400).send(err);
-    }
-};
-
-
 
 // Display functions
-
-module.exports.getEventsPosts = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const events = await Post.find({ type: "événements" }).populate({ path: 'posterId', select: ['name', 'firstName'] }).populate({ path: 'comments.commenterId', select: ['name', 'firstName'] }).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(events)
+const getAllPosts = async (req, res) => {
+  const posts = await Post.find({});
+  res.status(200).json(posts);
 };
 
+const postInfo = async (req, res) => {
+  const post = await Post.findById(req.params.id);
 
-
-module.exports.getNewsPosts = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const news = await Post.find({ type: "actualités" }).populate({ path: 'posterId', select: ['name', 'firstName'] }).populate({ path: 'comments.commenterId', select: ['name', 'firstName'] }).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(news)
+  if (post) {
+    res.json(post);
+  } else {
+    res.status(404).json("Post not found.");
+  }
 };
 
+const getCurrentUserPosts = async (req, res) => {
+  const posts = await Post.find({ posterId: req.user._id });
 
-
-module.exports.readPost = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    Post.findById(req.params.id, (err, docs) => {
-        if (!err) res.send(docs)
-        else console.log('ID unknown : ' + err);
-    }).populate({ path: 'posterId', select: ['name', 'firstName'] }).populate({ path: 'comments.commenterId', select: ['name', 'firstName'] });
+  if (posts) {
+    res.json(posts);
+  } else {
+    res.status(404).json("User not found.");
+  }
 };
 
+const getEventsPosts = async (req, res) => {
+  const events = await Post.find({ type: "event" })
+    .populate({ path: "posterId", select: ["name", "firstName"] })
+    .populate({ path: "comments.commenterId", select: ["name", "firstName"] });
+  res.status(200).json(events);
+};
 
+const getNewsPosts = async (req, res) => {
+  const events = await Post.find({ type: "news" })
+    .populate({ path: "posterId", select: ["name", "firstName"] })
+    .populate({ path: "comments.commenterId", select: ["name", "firstName"] });
+  res.status(200).json(events);
+};
 
-module.exports.getAllPosts = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const posts = await Post.find().populate({ path: 'posterId', select: ['name', 'firstName'] }).populate({ path: 'comments.commenterId', select: ['name', 'firstName'] }).sort({ createdAt: -1 }).limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(posts)
+//COMMENTS FUNCTIONS
+
+const commentPost = (req, res) => {
+  try {
+    return Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          comments: {
+            commenterId: req.body.commenterId,
+            text: req.body.text,
+            timestamp: new Date().getTime(),
+          },
+        },
+      },
+      { new: true },
+      (err, docs) => {
+        if (!err) return res.send(docs);
+        else return res.status(400).send(err);
+      }
+    )
+      .populate({ path: "posterId", select: ["name", "firstName"] })
+      .populate({
+        path: "comments.commenterId",
+        select: ["name", "firstName"],
+      });
+  } catch (err) {
+    return res.status(400).send(err);
+  }
+};
+
+const editCommentPost = (req, res) => {
+  try {
+    return Post.findById(req.params.id, (err, docs) => {
+      const theComment = docs.comments.find((comment) =>
+        comment._id.equals(req.body.commentId)
+      );
+
+      if (!theComment) return res.status(404).send("Comment not found");
+      theComment.text = req.body.text;
+
+      return docs.save((err) => {
+        if (!err) return res.status(200).send(docs);
+        return res.status(500).send(err);
+      });
+    })
+      .populate({ path: "posterId", select: ["name", "firstName"] })
+      .populate({
+        path: "comments.commenterId",
+        select: ["name", "firstName"],
+      });
+  } catch (err) {
+    return res.status(400).send(err);
+  }
+};
+
+const deleteCommentPost = (req, res) => {
+  try {
+    return Post.findByIdAndUpdate(
+      req.params.id,
+      {
+        $pull: {
+          comments: {
+            _id: req.body.commentId,
+          },
+        },
+      },
+      { new: true },
+      (err, docs) => {
+        if (!err) res.status(200).json({ message: "Succefully deleted" });
+        else return res.status(400).send(err);
+      }
+    );
+  } catch (err) {
+    return res.status(400).send(err);
+  }
+};
+
+module.exports = {
+  createPost,
+  updatePost,
+  deletePost,
+  postInfo,
+  getAllPosts,
+  getCurrentUserPosts,
+  getEventsPosts,
+  getNewsPosts,
+  commentPost,
+  editCommentPost,
+  deleteCommentPost,
 };

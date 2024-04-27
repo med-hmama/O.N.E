@@ -1,40 +1,42 @@
-const mongoose = require('mongoose'); 
+const mongoose = require("mongoose");
 
-const deskSchema = new mongoose.Schema({
+const deskSchema = new mongoose.Schema(
+  {
     deskNumber: {
-        type: Number,
-        required: true,
-        unique: true
+      type: Number,
+      required: true,
+      unique: true,
     },
 
-    telephone: {
-        type: Number,
-        required: true,
-        min: 10000000,
-        max: 99999999,
-        unique: true
+    phoneNumber: {
+      type: Number,
+      required: true,
+      min: 10000000,
+      max: 99999999,
+      unique: true,
     },
 
     city: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
 
     address: {
-        type: String,
-        required: true
+      type: String,
+      required: true,
     },
 
     postalCode: {
-        type: Number,
-        required: true,
-        min: 1000,
-        max: 9999
+      type: Number,
+      required: true,
+      min: 1000,
+      max: 9999,
     },
-},
+  },
 
-    {
-        timestamps: true,
-    });
+  {
+    timestamps: true,
+  }
+);
 
-module.exports = mongoose.model("Desk", deskSchema); 
+module.exports = mongoose.model("Desk", deskSchema);

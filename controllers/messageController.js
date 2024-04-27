@@ -1,78 +1,82 @@
-const Message = require('../models/messageModel');
-const ObjectID = require('mongoose').Types.ObjectId;
+const Message = require("../models/messageModel");
 
+const createMessage = async (req, res) => {
+  const { senderName, phoneNumber, email, message } = req.body;
 
-module.exports.createMessage = async (req, res) => {
-    const message = new Message({
-        senderName: req.body.senderName,
-        telephone: req.body.telephone,
-        email: req.body.email,
-        message: req.body.message
-    });
+  const newMessage = new Message({ senderName, phoneNumber, email, message });
 
-    try {
-        const savedMessage = await message.save();
-        res.send({ savedMessage });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  try {
+    await newMessage.save();
+    res
+      .status(201)
+      .json({ message: "Message created successfully", newMessage });
+  } catch (error) {
+    res.status(400).json(error);
+  }
 };
 
+const updateMessage = async (req, res) => {
+  const { senderName, phoneNumber, email, message } = req.body;
 
+  let updatedFields = {
+    name,
+    city,
+    address,
+    entrepriseId,
+    date,
+    description,
+  };
 
-module.exports.updateMessage = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  try {
+    const updatedMessage = await Message.findByIdAndUpdate(
+      req.params.id,
+      updatedFields
+    );
 
-    try {
-        await Message.findByIdAndUpdate(
-            { _id: req.params.id }, {
-            senderName: req.body.senderName,
-            telephone: req.body.telephone,
-            email: req.body.email,
-            message: req.body.message
-        }
-        ).then((docs, err) => {
-            if (!err) return res.json({ message: "Succefully updated" });
-        });
-
-    } catch (err) {
-        return res.status(500).json({ message: err });
+    if (updatedMessage) {
+      await res.json({
+        message: "Message updated successfully",
+        updatedMessage,
+      });
+    } else {
+      res.status(404).json("Message not found");
     }
+  } catch (error) {
+    res.status(500).json(error);
+  }
 };
 
+const deleteMessage = async (req, res) => {
+  const message = await Message.findById(req.params.id);
 
-
-module.exports.deleteMessage = async (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
-
-    try {
-        await Message.deleteOne({ _id: req.params.id }).exec();
-        res.status(200).json({ message: "Succefully deleted" });
-    } catch (err) {
-        return res.status(500).json({ message: err });
-    }
+  if (message) {
+    await Message.deleteOne({ _id: message._id });
+    res.json({ message: "Message deleted successfully." });
+  } else {
+    res.status(404).json("Message not found");
+  }
 };
-
-
 
 // Display functions
-
-module.exports.getAllMessages = async (req, res) => {
-    const { page = 1, limit = 7 } = req.query;
-    const messages = await Message.find().limit(limit * 1).skip((page - 1) * limit);
-    res.status(200).json(messages);
+const getAllMessages = async (req, res) => {
+  const messages = await Message.find({});
+  res.status(200).json(messages);
 };
 
+const messageInfo = async (req, res) => {
+  const message = await Message.findById(req.params.id);
 
-module.exports.messageInfo = (req, res) => {
-    if (!ObjectID.isValid(req.params.id))
-        return res.status(400).send("ID unknown : " + req.params.id);
+  if (message) {
+    res.json(message);
+  } else {
+    res.status(404).json("Message not found.");
+  }
+};
 
-    Message.findById(req.params.id, (err, docs) => {
-        if (!err) res.send(docs)
-        else console.log('ID unknown : ' + err);
-    });
+module.exports = {
+  createMessage,
+  updateMessage,
+  deleteMessage,
+  getAllMessages,
+  messageInfo,
 };
